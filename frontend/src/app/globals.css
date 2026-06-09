@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Lato:wght@300;400;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  
+  body {
+    @apply bg-ink-50 text-ink-900 font-body antialiased;
+    background-image: 
+      radial-gradient(circle at 20% 20%, rgba(30, 58, 138, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(180, 83, 9, 0.03) 0%, transparent 50%);
+  }
+
+  h1, h2, h3 { @apply font-display; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-navy-700 hover:bg-navy-800 text-white font-body font-bold
+           px-6 py-3 rounded-lg transition-all duration-200
+           shadow-navy hover:shadow-lg cursor-pointer
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-white hover:bg-ink-50 text-navy-700 font-body font-bold
+           px-6 py-3 rounded-lg transition-all duration-200
+           border border-ink-200 hover:border-navy-300
+           cursor-pointer;
+  }
+
+  .card {
+    @apply bg-white rounded-xl border border-ink-200 shadow-card;
+  }
+
+  .badge-critical {
+    @apply bg-red-50 text-red-700 border border-red-200 
+           text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide;
+  }
+
+  .badge-high {
+    @apply bg-orange-50 text-orange-700 border border-orange-200
+           text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide;
+  }
+
+  .badge-medium {
+    @apply bg-amber-50 text-amber-700 border border-amber-200
+           text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide;
+  }
+
+  .badge-low {
+    @apply bg-blue-50 text-blue-700 border border-blue-200
+           text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide;
+  }
+}
+
+/* Staggered animation utilities */
+.animate-delay-100 { animation-delay: 0.1s; animation-fill-mode: both; }
+.animate-delay-200 { animation-delay: 0.2s; animation-fill-mode: both; }
+.animate-delay-300 { animation-delay: 0.3s; animation-fill-mode: both; }
+.animate-delay-400 { animation-delay: 0.4s; animation-fill-mode: both; }
+.animate-delay-500 { animation-delay: 0.5s; animation-fill-mode: both; }
