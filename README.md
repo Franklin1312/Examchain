@@ -1,6 +1,14 @@
 # Inkless — CBSE OSM Audit Platform
 
-Independent verification and audit layer for CBSE's OSM digital evaluation system.
+> **ExamChain** — Independent verification and audit layer for CBSE's OSM digital evaluation system, powered by a dual-AI vision pipeline.
+
+[![GitHub](https://img.shields.io/badge/GitHub-ExamChain-blue?logo=github)](https://github.com/Franklin1312/Examchain)
+
+---
+
+## What is Inkless?
+
+Inkless is an open-source audit tool that lets students and parents independently verify whether their CBSE evaluated answer sheet was properly graded by the examiner. It analyses the OSM (Online Subjective Marks) annotated PDF using computer vision and AI to detect unevaluated pages, blurred scans, arithmetic errors, and missing supplements — then generates a professional re-evaluation recommendation.
 
 ---
 
@@ -8,10 +16,42 @@ Independent verification and audit layer for CBSE's OSM digital evaluation syste
 
 ```
 inkless/
-├── frontend/     Next.js + React + TailwindCSS + Shadcn UI
+├── frontend/     Next.js 14 + React 18 + TypeScript + TailwindCSS
 ├── backend/      Node.js + Express + MongoDB + Mongoose
-└── python/       OpenCV + Tesseract + PyMuPDF detection scripts
+└── python/       OpenCV + PyMuPDF + Tesseract detection scripts
 ```
+
+---
+
+## AI Pipeline (2-Model Architecture)
+
+Inkless uses a state-of-the-art dual-model pipeline via [OpenRouter](https://openrouter.ai):
+
+```
+Page Images
+    │
+    ▼
+┌───────────────────────────────────────────────────────┐
+│  Step 1 — VISION (nvidia/nemotron-3-nano-omni-30b)   │
+│  "Eyes" — Reads each page, extracts question numbers  │
+│  and evaluator box colors into structured JSON         │
+└───────────────────────────────────────────────────────┘
+    │  JSON: [{"question_number":"1","box_color":"green"}, ...]
+    ▼
+┌───────────────────────────────────────────────────────┐
+│  Step 2 — JSON HANDOFF (The Bridge)                   │
+│  Vision JSON + CV pipeline issues merged together      │
+└───────────────────────────────────────────────────────┘
+    │
+    ▼
+┌───────────────────────────────────────────────────────┐
+│  Step 3 — REASONING (nvidia/nemotron-3-ultra-550b)    │
+│  "Brain" — Identifies missing evaluations, sequences  │
+│  gaps, and generates 3 teacher improvement tips        │
+└───────────────────────────────────────────────────────┘
+```
+
+Both models are used via their **free tier** on OpenRouter — no paid API key needed.
 
 ---
 
@@ -20,9 +60,10 @@ inkless/
 - Node.js 18+
 - Python 3.9+
 - MongoDB (running locally on port 27017)
-- Tesseract OCR installed on system
+- An [OpenRouter](https://openrouter.ai) API key (free account)
+- Tesseract OCR (optional — used as OCR fallback)
 
-### Install Tesseract
+### Install Tesseract (optional)
 
 **Ubuntu/Debian:**
 ```bash
@@ -50,7 +91,7 @@ pip install -r requirements.txt
 
 Test it works:
 ```bash
-python3 detect_blur.py
+python detect_blur.py
 # Should print: {"error": "Usage: detect_blur.py <processed_dir>"}
 ```
 
@@ -60,7 +101,7 @@ python3 detect_blur.py
 cd backend
 npm install
 cp .env.example .env
-# Edit .env — add your ANTHROPIC_API_KEY
+# Edit .env — add your OPENROUTER_API_KEY
 npm run dev
 ```
 
@@ -80,39 +121,58 @@ Frontend runs on: http://localhost:3000
 
 ## Environment Variables
 
-### backend/.env
+### `backend/.env`
 
-```
+```env
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/inkless
-ANTHROPIC_API_KEY=sk-ant-...your key here...
+OPENROUTER_API_KEY=sk-or-...your key here...
 UPLOADS_DIR=./uploads
 PROCESSED_DIR=./processed
 ```
+
+Get a free OpenRouter key at: https://openrouter.ai/keys
 
 ---
 
 ## How It Works
 
-1. Student uploads evaluated answer sheet PDF (the one with OSM marks)
+1. Student uploads their CBSE OSM-evaluated answer sheet PDF
 2. Backend saves file, creates paper record in MongoDB, starts pipeline
 3. Python scripts run in sequence:
-   - `extract_pages.py` — renders each PDF page as PNG
+   - `extract_pages.py` — renders each PDF page as a PNG image
    - `detect_blur.py` — Laplacian variance blur score per page
    - `detect_annotations.py` — detects green/red/blue OSM annotation boxes
    - `detect_content.py` — detects student ink + OCR per page
-4. Node cross-references all signals, writes issues to MongoDB
-5. Trust score calculated from weighted issue deductions
-6. Claude API generates natural language re-evaluation recommendation
-7. SHA-256 hash chain records every event as tamper-evident audit trail
-8. Frontend polls for status, renders dashboard with viewer + audit trail
+4. **Vision AI** (Nano Omni) analyses each content page, extracts question-level annotation JSON
+5. Node cross-references all signals, writes issues to MongoDB
+6. Trust score calculated from weighted issue deductions
+7. **Reasoning AI** (Ultra) receives the JSON + issues, generates audit recommendation + 3 teacher tips
+8. SHA-256 hash chain records every event as a tamper-evident audit trail
+9. Frontend polls for status, renders dashboard with viewer + audit trail
+
+---
+
+## Full Processing Pipeline
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| 1 | `extracting_pages` | PDF → PNG images via PyMuPDF |
+| 2 | `detecting_blur` | Blur score per page via OpenCV Laplacian |
+| 3 | `detecting_annotations` | OSM box detection via OpenCV HSV + Tesseract |
+| 4 | `detecting_content` | Student ink presence via pixel density + OCR |
+| 4.5 | `vision_analysis` | **AI Vision** — question-level JSON extraction (Nano Omni) |
+| 5 | `cross_referencing` | Content vs marks mismatch detection |
+| 6 | `calculating_score` | Weighted trust score computation |
+| 7 | `generating_advice` | **AI Reasoning** — audit recommendation + tips (Ultra) |
+| — | `complete` | Dashboard ready |
 
 ---
 
 ## OSM Annotation Format (CBSE 2026)
 
-| Box Color | Meaning | Format |
-|-----------|---------|--------|
+| Box Color | Meaning | Example |
+|-----------|---------|---------|
 | Green | Marks awarded | `1 30a_iORS1` |
 | Red | Zero marks | `0 34_ivaORS1` |
 | Blue | Sub-total | `30a_i : 0.5 + 0 = 0.5` |
@@ -121,7 +181,7 @@ PROCESSED_DIR=./processed
 
 Question code format: `30a_iORS1`
 - `30` = Question number
-- `a`  = Part
+- `a` = Part
 - `_i` = Sub-part
 - `ORS` = Optional/alternate (if applicable)
 - `S1` = Set number
@@ -135,9 +195,10 @@ Question code format: `30a_iORS1`
 | Blur detector | Pages too blurry for fair evaluation | OpenCV Laplacian |
 | Annotation detector | All evaluator marks + question codes | OpenCV HSV + Tesseract |
 | Content detector | Student writing presence | Pixel density + OCR |
+| Vision AI | Question numbers + box colors per page | Nano Omni (vision LLM) |
 | Cross-reference engine | Content vs marks mismatch | Pure Python logic |
 | Trust score | Weighted issue scoring | Pure math |
-| AI advisor | Natural language recommendation | Claude API |
+| AI advisor | Audit recommendation + teacher tips | Ultra (reasoning LLM) |
 | Audit trail | Tamper-evident event log | SHA-256 chain |
 
 ---
@@ -150,22 +211,18 @@ Question code format: `30a_iORS1`
 | `blur_penalized` | Critical | Blurred page received zero marks |
 | `missing_page` | Critical | Gap in page number sequence |
 | `supplement_missing` | Critical | PTO marker found, supplement not attached |
-| `wrong_sheet` | Critical | Roll number mismatch on cover page |
-| `anomalous_zero` | High | Substantial content, zero marks |
 | `arithmetic_error` | High | Blue box total ≠ sum of sub-marks |
 | `repeat_stamp` | High | REPEAT ANS+ stamp detected |
-| `mark_mismatch` | High | Detected mark ≠ recorded mark |
 
 ---
 
-## Demo Setup
+## Audit Trail (Hash Chain)
 
-To prepare a reliable demo PDF:
+Every event in the pipeline is recorded with:
+- **SHA-256 hash** of its own data
+- **Previous event's hash** as the chain link
 
-1. Take any CBSE answer sheet sample
-2. Ensure at least one page has visible student content but no green/red annotation box
-3. Ensure at least one page is noticeably blurred with a red zero box
-4. Run through Inkless — output should show Trust Score < 70 with critical issues
+This means if anyone modifies a MongoDB record after the fact, the hash chain will break — making tampering detectable. The system does **not** use a public blockchain, but the chain structure is conceptually identical to Ethereum's block chaining.
 
 ---
 
@@ -177,7 +234,28 @@ To prepare a reliable demo PDF:
 | Backend | Node.js, Express, Mongoose |
 | Database | MongoDB |
 | CV | OpenCV, PyMuPDF |
-| OCR | Tesseract |
-| AI | Claude API (claude-haiku-4-5) |
+| OCR | Tesseract (optional) |
+| Vision AI | NVIDIA Nemotron Nano Omni 30B (via OpenRouter, free) |
+| Reasoning AI | NVIDIA Nemotron Ultra 550B (via OpenRouter, free) |
 | Audit | SHA-256 hash chaining |
 | Viewer | React-Konva canvas |
+
+---
+
+## Demo
+
+To prepare a reliable demo PDF:
+
+1. Take any CBSE OSM answer sheet PDF (look for the coloured annotation boxes)
+2. Ensure at least one page has visible student content but no green/red annotation box
+3. Ensure at least one page is noticeably blurred with a red zero box
+4. Upload through the Inkless dashboard
+5. Output should show Trust Score < 70 with critical issues
+
+An example test file `inkless-osm-marked.pdf` is included at the project root (not committed to git).
+
+---
+
+## License
+
+MIT — feel free to fork and adapt for any state board or examination system.
